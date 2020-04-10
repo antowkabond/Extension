@@ -1,10 +1,27 @@
+const headerReport = {
+  jobName: "Job Name",
+  jobUrl: "Job Url",
+  company: "Company",
+  companyUrl: "Company URL",
+  location: "Location",
+  fullField: "Full Field",
+  postedOn: "Posted On",
+  amountOfViews: "Amount of Views",
+  amountOfApplicants: "Amount of Applicants",
+  seniority: "Seniority",
+  amountOfEmployees: "Amount of Employees",
+  jobLocation: "Job Location",
+  // description: "Description",
+  employmentType: "Employment Type",
+  jobFunction: "Job Functions",
+  industry: "Industry",
+  followers: "Followers",
+}
+
 const selectors = {
   jobName: "h2.jobs-details-top-card__job-title",
-  // href
   jobUrl: "a.jobs-details-top-card__job-title-link",
-  //href , innerText
   company: "a.jobs-details-top-card__company-url",
-  //innerText
   location: "span.jobs-details-top-card__bullet",
   postedOn: "p.jobs-details-top-card__job-info span",
   amountOfViews: "p.jobs-details-top-card__job-info span.jobs-details-top-card__bullet",
@@ -17,33 +34,37 @@ const selectors = {
   jobFunction: "ul.jobs-box__list.jobs-description-details__list.js-formatted-job-functions-list",
   industry: "ul.jobs-box__list.jobs-description-details__list.js-formatted-industries-list",
   followers: "span.jobs-company-information__follow-count.inline",
-};
 
-const selectorJobs = 'li.occludable-update.artdeco-list__item--offset-4'
-const selectorJobContainer = 'div.jobs-search-results'
-const selectorPaginationContainer = 'ul.artdeco-pagination__pages';
-const selectorLastPagination = `ul.artdeco-pagination__pages>li:last-child`
+
+  jobs: 'li.occludable-update.artdeco-list__item--offset-4',
+  jobsContainer: 'div.jobs-search-results',
+  lastPagination: 'ul.artdeco-pagination__pages>li:last-child',
+  panelDetails: 'div.jobs-search-two-pane__details'
+};
 
 
 chrome.runtime.onMessage.addListener(async function (request, sender, sendResponse) {
   let jobStore = [];
+  jobStore.push(headerReport);
 
-  const containerJobs = $(selectorJobContainer)[0];
-  const heightBlock = $(selectorJobs)[0].clientHeight;
-  const amountTabs = Number($(selectorLastPagination)[0].innerText);
+  const containerJobs = $(selectors.jobsContainer)[0];
+  const panelDetails = $(selectors.panelDetails)[0];
+  const heightBlock = $(selectors.jobs)[0].clientHeight;
+  const amountTabs = Number($(selectors.lastPagination)[0].innerText);
+
   try {
-
-
-    for (let i = 1; i < 2; i++) {
+    for (let i = 1; i < amountTabs; i++) {
       let scrollFromTop = heightBlock;
-      let jobs = $(selectorJobs);
+      let jobs = $(selectors.jobs);
+
 
       for (let j = 0; j < jobs.length; j++) {
         let idDiv = `#${jobs[j].children[0].id}`;
 
-        if (j % 6 === 0 && j !== 0 && j !== 24) {
-          await sleep(3000);
-        }
+        // Scroll panel job detail
+        panelDetails.scrollTo(0, panelDetails.clientHeight)
+        await sleep(1, 4);
+
         let jobName = getAttr($(selectors.jobName)[0], "innerText");
         let jobUrl = getAttr($(selectors.jobUrl)[0], "href");
         let company = $(selectors.company)[0];
@@ -53,7 +74,7 @@ chrome.runtime.onMessage.addListener(async function (request, sender, sendRespon
         let postedOn = getAttr($(selectors.postedOn)[0], "innerText");
         let amountOfViews = getAttr($(selectors.amountOfViews)[0], "innerText");
         let jobDetailsContainer = document.querySelectorAll(selectors.jobDetailsContainer);
-        let {amountOfApplicants, seniority, amountOfEmployees, jobLocation} = findAplSenEmp(jobDetailsContainer)
+        let {amountOfApplicants, seniority, amountOfEmployees, jobLocation} = getJobDetails(jobDetailsContainer)
         let jobDescription = getAttr($(selectors.jobDescription)[0], "innerText");
         let employmentType = getAttr($(selectors.employmentType)[0], "innerText");
         let jobFunction = getAttr($(selectors.jobFunction)[0], "innerText");
@@ -67,8 +88,8 @@ chrome.runtime.onMessage.addListener(async function (request, sender, sendRespon
           companyUrl,
           location: location.trim(),
           fullField: companyName + " " + location,
-          postedOn: cutUsefullInformation(postedOn),
-          amountOfViews: cutUsefullInformation(amountOfViews),
+          postedOn: cutUsefulInformation(postedOn),
+          amountOfViews: cutUsefulInformation(amountOfViews),
           amountOfApplicants,
           seniority,
           amountOfEmployees,
@@ -80,25 +101,26 @@ chrome.runtime.onMessage.addListener(async function (request, sender, sendRespon
           followers
         };
 
-        containerJobs.scrollTo(0, scrollFromTop)
+        //Scroll job container
+        containerJobs.scrollTo(0, scrollFromTop);
         scrollFromTop += heightBlock;
 
         jobStore.push(job);
+        //Click on job
         $(idDiv)[0].click();
       }
 
+      //Click on pagination
       $('li.artdeco-pagination__indicator.active')[0].nextElementSibling.firstElementChild.click();
-      await sleep(3000);
+      await sleep();
 
     }
   } finally {
     exportToCsv('export.csv', jobStore);
   }
-
-  // sendResponse(jobStore);
 });
 
-function cutUsefullInformation(str) {
+function cutUsefulInformation(str) {
   if (!str) {
     return "";
   }
@@ -106,66 +128,58 @@ function cutUsefullInformation(str) {
   return str.slice(index);
 }
 
-function findAplSenEmp(jobDetailsContainer) {
+function getJobDetails(jobDetailsContainer) {
   let amountOfApplicants = '', seniority = '', amountOfEmployees = '', jobLocation = '';
-  for (let i = 0; i < jobDetailsContainer.length; i++) {
-    const text = jobDetailsContainer[i].innerText;
+
+  jobDetailsContainer.forEach(jobDetail => {
+    const text = jobDetail.innerText;
     if (text.match('employees')) {
       amountOfEmployees = text
-    }
-    if (text.match('level')) {
+    } else if (text.match('level')) {
       seniority = text;
-    }
-    if (text.match('applicants')) {
+    } else if (text.match('applicants')) {
       amountOfApplicants = text;
     } else {
       jobLocation = text;
     }
-  }
+  })
+
   return {amountOfApplicants, seniority, amountOfEmployees, jobLocation};
 }
 
 function getAttr(domElement, attr) {
   if (attr === 'innerText') {
-    // delete double space from text
-    return domElement ? domElement[attr].replace(/ +/g, ' ').trim() : "";
+    return domElement ? domElement[attr].trim() : "";
   }
   return domElement ? domElement[attr] : "";
 }
 
-function sleep(s) {
-  return new Promise(resolve => setTimeout(resolve, s));
+function sleep(from, to) {
+  let s = 0;
+  if (!s) {
+    s = randomFromInterval(2, 5);
+  } else {
+    s = randomFromInterval(from, to);
+  }
+  return new Promise(resolve => setTimeout(resolve, s * 1000));
 }
 
 function exportToCsv(filename, rows) {
-  const processRow = function (row) {
-    let finalVal = '';
-    let count = 0;
-    for (let [key, value] of Object.entries(row)) {
-      if (count > 0) {
-        finalVal += ',';
-      }
-      finalVal += value;
-      count++;
-    }
-    return finalVal + '\n';
-  };
+  const processRow = row => Object.values(row).map(row => row.replace(/,/g, '.')).join(',') + '\n';
 
-  let csvFile = '';
-  for (let i = 0; i < rows.length; i++) {
-    csvFile += processRow(rows[i]);
-  }
+  let csvFile = rows.reduce((accumulator, row) => accumulator + processRow(row), '');
 
   const blob = new Blob([csvFile], {type: 'text/csv;charset=utf-8;'});
   const link = document.createElement("a");
-  if (link.download !== undefined) { // feature detection
-    // Browsers that support HTML5 download attribute
-    const url = URL.createObjectURL(blob);
-    link.setAttribute("href", url);
-    link.setAttribute("download", filename);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  }
+  const url = URL.createObjectURL(blob);
+  link.setAttribute("href", url)
+  link.setAttribute("download", filename);
+  link.style.visibility = 'hidden';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+function randomFromInterval(min, max) {
+  return Math.random() * (max - min) + min;
 }

@@ -9,14 +9,15 @@
       ],
       "js": [
         "content.js",
-        "jquery-3.4.1.min.js",
-        "tableExport.js"
+        "jquery-3.4.1.min.js"
       ]
     }
   ],
   "browser_action": {
-    "default_popup": "popup.html",
-    "default_icon": "icon.png",
-    "default_title": "My app"
-  }
+    "default_icon": "icon.png"
+  },
+  "background": {
+    "scripts": ["background.js"]
+  },
+  "permissions" : ["tabs"]
 }

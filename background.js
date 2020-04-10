@@ -1,10 +1,6 @@
-// window.items = {};
-//
-//
-// chrome.runtime.onMessage.addListener(function(request, sender , sendResponse){
-//         items = request;
-// })
-//
-// chrome.browserAction.onClicked.addListener(function(tab){
-//     chrome.tabs.create({url : 'popup.html'})
-// })
+chrome.browserAction.onClicked.addListener(function(tab){
+  chrome.tabs.query({currentWindow: true, active: true},
+    function (tabs) {
+      chrome.tabs.sendMessage(tabs[0].id, 'hi');
+    })
+})
